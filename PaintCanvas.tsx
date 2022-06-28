@@ -40,21 +40,10 @@ class PaintCanvas extends Component<PaintCanvasProps, PaintCanvasState> {
     onMoveShouldSetPanResponder: () => true,
     onPanResponderGrant: (e: GestureResponderEvent) => {
       const newPoints = this.state.points;
-      const newIntermediatePaths = this.state.intermediatePaths;
       
       const [x, y] = [e.nativeEvent.pageX, e.nativeEvent.pageY];
       newPoints.push({ x, y });
 
-      newIntermediatePaths.push(
-        <Circle 
-          cx={`${this._pointsToSvgConverter
-            .pointToSvgCircle(this.state.points[0]).x}`}
-          cy={`${this._pointsToSvgConverter
-            .pointToSvgCircle(this.state.points[0]).y}`}
-          r={`${this.props.strokeSize / 2}`}
-        />
-      );
-      
       this.setState({ points: newPoints });
     },
     onPanResponderMove: (e: GestureResponderEvent) => {
@@ -94,24 +83,13 @@ class PaintCanvas extends Component<PaintCanvasProps, PaintCanvasState> {
         );
       }
 
-      if (this.state.points.length > 0) {
+      if (this.state.points.length === 1) {
         newFinalPaths.push(
           <Circle 
             cx={`${this._pointsToSvgConverter
               .pointToSvgCircle(this.state.points[0]).x}`}
             cy={`${this._pointsToSvgConverter
               .pointToSvgCircle(this.state.points[0]).y}`}
-            r={`${this.props.strokeSize / 2}`}
-          />
-        );
-        newFinalPaths.push(
-          <Circle 
-            cx={`${this._pointsToSvgConverter
-              .pointToSvgCircle(this.state.points[this.state.points.length - 1])
-                .x}`}
-            cy={`${this._pointsToSvgConverter
-              .pointToSvgCircle(this.state.points[this.state.points.length - 1])
-                .y}`}
             r={`${this.props.strokeSize / 2}`}
           />
         );
