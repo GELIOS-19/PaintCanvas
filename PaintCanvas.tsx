@@ -84,6 +84,8 @@ class PaintCanvas extends Component<PaintCanvasProps, PaintCanvasState> {
             cy={`${this._pointsToSvgConverter
               .pointToSvgCircle(this.state.currentPoints[0]).y}`}
             r={`${this.props.strokeSize / 2}`}
+            stroke={this.props.strokeColor}
+            fill={this.props.strokeColor}
           />
         );
       }
