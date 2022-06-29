@@ -12,14 +12,14 @@ import Svg, { G, Path, Circle } from 'react-native-svg';
 type PaintCanvasProps = {
   width: number;
   height: number;
-  color: string;
+  strokeColor: string;
   strokeSize: number;
 };
 
 type PaintCanvasState = {
-  points: { x: number; y: number }[];
-  intermediatePaths: JSX.Element[];
-  finalPaths: JSX.Element[];
+  currentPoints: { x: number; y: number }[];
+  currentPath: JSX.Element;
+  completedPaths: JSX.Element[];
 }
 
 class PaintCanvas extends Component<PaintCanvasProps, PaintCanvasState> {
@@ -28,9 +28,9 @@ class PaintCanvas extends Component<PaintCanvasProps, PaintCanvasState> {
   }
 
   public state: PaintCanvasState = {
-    points: [],
-    intermediatePaths: [],
-    finalPaths: []
+    currentPoints: [],
+    currentPath: <Path />,
+    completedPaths: []
   }
 
   private _pointsToSvgConverter = new _PointsToSvgConverter();
@@ -39,25 +39,25 @@ class PaintCanvas extends Component<PaintCanvasProps, PaintCanvasState> {
     onStartShouldSetPanResponder: () => true,
     onMoveShouldSetPanResponder: () => true,
     onPanResponderGrant: (e: GestureResponderEvent) => {
-      const newPoints = this.state.points;
+      const newPoints = this.state.currentPoints;
       
       const [x, y] = [e.nativeEvent.pageX, e.nativeEvent.pageY];
       newPoints.push({ x, y });
 
-      this.setState({ points: newPoints });
+      this.setState({ currentPoints: newPoints });
     },
     onPanResponderMove: (e: GestureResponderEvent) => {
-      const newPoints = this.state.points;
-      const newIntermediatePaths = this.state.intermediatePaths;
+      const newPoints = this.state.currentPoints;
+      let newCurrentPath = this.state.currentPath;
 
       const [x, y] = [e.nativeEvent.pageX, e.nativeEvent.pageY];
       newPoints.push({ x, y });
 
-      if (this.state.points.length > 1) {
-        newIntermediatePaths.push(
+      if (this.state.currentPoints.length > 1) {
+        newCurrentPath = (
           <Path
-            d={this._pointsToSvgConverter.pointsToSvgPath(this.state.points)}
-            stroke={this.props.color}
+            d={this._pointsToSvgConverter.pointsToSvgPath(newPoints)}
+            stroke={this.props.strokeColor}
             strokeWidth={this.props.strokeSize}
             fill='none'
           />
@@ -65,40 +65,33 @@ class PaintCanvas extends Component<PaintCanvasProps, PaintCanvasState> {
       } 
 
       this.setState({
-        points: newPoints, 
-        intermediatePaths: newIntermediatePaths
+        currentPoints: newPoints, 
+        currentPath: newCurrentPath
       });
     },
     onPanResponderRelease: () => {
-      const newFinalPaths = this.state.finalPaths;
+      const newFinalPaths = this.state.completedPaths;
 
-      if (this.state.points.length > 1) {
-        newFinalPaths.push(
-          <Path
-            d={this._pointsToSvgConverter.pointsToSvgPath(this.state.points)}
-            stroke={this.props.color}
-            strokeWidth={this.props.strokeSize}
-            fill='none'
-          />
-        );
+      if (this.state.currentPoints.length > 1) {
+        newFinalPaths.push(this.state.currentPath);
       }
 
-      if (this.state.points.length === 1) {
+      if (this.state.currentPoints.length === 1) {
         newFinalPaths.push(
           <Circle 
             cx={`${this._pointsToSvgConverter
-              .pointToSvgCircle(this.state.points[0]).x}`}
+              .pointToSvgCircle(this.state.currentPoints[0]).x}`}
             cy={`${this._pointsToSvgConverter
-              .pointToSvgCircle(this.state.points[0]).y}`}
+              .pointToSvgCircle(this.state.currentPoints[0]).y}`}
             r={`${this.props.strokeSize / 2}`}
           />
         );
       }
 
       this.setState({
-        points: [], 
-        intermediatePaths: [], 
-        finalPaths: newFinalPaths
+        currentPoints: [], 
+        currentPath: <Path />,
+        completedPaths: newFinalPaths
       });
     },
   })
@@ -116,8 +109,8 @@ class PaintCanvas extends Component<PaintCanvasProps, PaintCanvasState> {
             width={this.props.width}
             height={this.props.height}
           >
-            <G>{this.state.intermediatePaths}</G>
-            <G>{this.state.finalPaths}</G>
+            <G>{this.state.currentPath}</G>
+            <G>{this.state.completedPaths}</G>
           </Svg>
         </View>
       </View>
