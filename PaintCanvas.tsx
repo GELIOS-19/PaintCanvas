@@ -1,4 +1,4 @@
-import React, { Component } from 'react';
+import React, { Component, RefObject } from "react";
 import {
   StyleSheet,
   View,
@@ -6,158 +6,209 @@ import {
   GestureResponderEvent,
   LayoutRectangle,
   LayoutChangeEvent,
-} from 'react-native';
-import Svg, { G, Path, Circle } from 'react-native-svg';
+  Button,
+  PanResponderInstance,
+} from "react-native";
+import Svg, { G, Path, Circle } from "react-native-svg";
+import ViewShot, { captureRef } from "react-native-view-shot-with-web-support";
+import ColorPicker from "react-native-wheel-color-picker";
 
-type PaintCanvasProps = {
+interface PaintCanvasProps {
   width: number;
   height: number;
+  onConvertToImage?: (base64: string) => void;
+}
+
+interface PaintCanvasState {
+  currentPoints: { x: number; y: number }[];
+  currentPath: React.ReactNode;
+  completedPaths: React.ReactNode[];
   strokeColor: string;
   strokeSize: number;
-};
-
-type PaintCanvasState = {
-  currentPoints: { x: number; y: number }[];
-  currentPath: JSX.Element;
-  completedPaths: JSX.Element[];
 }
 
 class PaintCanvas extends Component<PaintCanvasProps, PaintCanvasState> {
+  private _panResponder: PanResponderInstance;
+  private _pointsToSvgConverter: PointsToSvgConverter;
+  private _viewShotRef: RefObject<ViewShot>;
+
   constructor(props: PaintCanvasProps) {
     super(props);
+
+    this.state = {
+      currentPoints: [],
+      currentPath: <Path />,
+      completedPaths: [],
+      strokeColor: "",
+      strokeSize: 3,
+    };
+
+    this._panResponder = PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderGrant: (e: GestureResponderEvent) => {
+        const newPoints = this.state.currentPoints;
+
+        const [x, y] = [e.nativeEvent.pageX, e.nativeEvent.pageY];
+        newPoints.push({ x, y });
+
+        this.setState({ currentPoints: newPoints });
+      },
+      onPanResponderMove: (e: GestureResponderEvent) => {
+        const newPoints = this.state.currentPoints;
+        let newCurrentPath = this.state.currentPath;
+
+        const [x, y] = [e.nativeEvent.pageX, e.nativeEvent.pageY];
+        newPoints.push({ x, y });
+
+        if (this.state.currentPoints.length > 1) {
+          newCurrentPath = (
+            <Path
+              d={this._pointsToSvgConverter.pointsToSvgPath(newPoints)}
+              stroke={this.state.strokeColor}
+              strokeWidth={this.state.strokeSize}
+              fill="none"
+            />
+          );
+        }
+
+        this.setState({
+          currentPoints: newPoints,
+          currentPath: newCurrentPath,
+        });
+      },
+      onPanResponderRelease: () => {
+        const newFinalPaths = this.state.completedPaths;
+
+        if (this.state.currentPoints.length > 1) {
+          newFinalPaths.push(this.state.currentPath);
+        }
+
+        if (this.state.currentPoints.length === 1) {
+          newFinalPaths.push(
+            <Circle
+              cx={`${
+                this._pointsToSvgConverter.pointToSvgCircle(
+                  this.state.currentPoints[0]
+                ).x
+              }`}
+              cy={`${
+                this._pointsToSvgConverter.pointToSvgCircle(
+                  this.state.currentPoints[0]
+                ).y
+              }`}
+              r={`${this.state.strokeSize / 2}`}
+              stroke={this.state.strokeColor}
+              fill={this.state.strokeColor}
+            />
+          );
+        }
+
+        this.setState({
+          currentPoints: [],
+          currentPath: <Path />,
+          completedPaths: newFinalPaths,
+        });
+      },
+    });
+
+    this._pointsToSvgConverter = new PointsToSvgConverter();
+
+    this._viewShotRef = React.createRef<ViewShot>();
   }
 
-  public state: PaintCanvasState = {
-    currentPoints: [],
-    currentPath: <Path />,
-    completedPaths: []
+  private _convertPaintCanvasToImage() {
+    captureRef(this._viewShotRef, {
+      result: "base64",
+      quality: 1.0,
+    }).then((base64: string) => {
+      this.props.onConvertToImage(base64);
+    });
   }
 
-  private _pointsToSvgConverter = new _PointsToSvgConverter();
-  
-  private _panResponder = PanResponder.create({
-    onStartShouldSetPanResponder: () => true,
-    onMoveShouldSetPanResponder: () => true,
-    onPanResponderGrant: (e: GestureResponderEvent) => {
-      const newPoints = this.state.currentPoints;
-      
-      const [x, y] = [e.nativeEvent.pageX, e.nativeEvent.pageY];
-      newPoints.push({ x, y });
+  private _convertPaintCanvasToImageCallback =
+    this._convertPaintCanvasToImage.bind(this);
 
-      this.setState({ currentPoints: newPoints });
-    },
-    onPanResponderMove: (e: GestureResponderEvent) => {
-      const newPoints = this.state.currentPoints;
-      let newCurrentPath = this.state.currentPath;
-
-      const [x, y] = [e.nativeEvent.pageX, e.nativeEvent.pageY];
-      newPoints.push({ x, y });
-
-      if (this.state.currentPoints.length > 1) {
-        newCurrentPath = (
-          <Path
-            d={this._pointsToSvgConverter.pointsToSvgPath(newPoints)}
-            stroke={this.props.strokeColor}
-            strokeWidth={this.props.strokeSize}
-            fill='none'
-          />
-        );
-      } 
-
-      this.setState({
-        currentPoints: newPoints, 
-        currentPath: newCurrentPath
-      });
-    },
-    onPanResponderRelease: () => {
-      const newFinalPaths = this.state.completedPaths;
-
-      if (this.state.currentPoints.length > 1) {
-        newFinalPaths.push(this.state.currentPath);
-      }
-
-      if (this.state.currentPoints.length === 1) {
-        newFinalPaths.push(
-          <Circle 
-            cx={`${this._pointsToSvgConverter
-              .pointToSvgCircle(this.state.currentPoints[0]).x}`}
-            cy={`${this._pointsToSvgConverter
-              .pointToSvgCircle(this.state.currentPoints[0]).y}`}
-            r={`${this.props.strokeSize / 2}`}
-            stroke={this.props.strokeColor}
-            fill={this.props.strokeColor}
-          />
-        );
-      }
-
-      this.setState({
-        currentPoints: [], 
-        currentPath: <Path />,
-        completedPaths: newFinalPaths
-      });
-    },
-  })
-
-  public render() {
+  render(): React.ReactNode {
     return (
       <View
-        onLayout={(e: LayoutChangeEvent) => 
-          this._pointsToSvgConverter.setOffsets(e.nativeEvent.layout)}
-        style={styles.paintContainer}
+        onLayout={(e: LayoutChangeEvent) =>
+          this._pointsToSvgConverter.setOffsets(e.nativeEvent.layout)
+        }
+        style={styles.paintCanvasContainer}
+        {...this._panResponder.panHandlers}
       >
-        <View {...this._panResponder.panHandlers}>
+        <ViewShot ref={this._viewShotRef}>
           <Svg
-            style={styles.paintSurface}
-            width={this.props.width}
-            height={this.props.height}
+            style={styles.paintCanvasSurface}
+            width={this.props.width >= 200 ? this.props.width : 200}
+            height={this.props.height >= 200 ? this.props.height : 200}
           >
-            <G>{this.state.currentPath}</G>
             <G>{this.state.completedPaths}</G>
+            <G>{this.state.currentPath}</G>
           </Svg>
+        </ViewShot>
+        <View style={styles.paintCanvasContainer}>
+          <ColorPicker
+            onColorChangeComplete={(color: string) => {
+              this.setState({ strokeColor: color });
+            }}
+          />
+        </View>
+        <View style={styles.paintCanvasContainer}>
+          <Button
+            onPress={this._convertPaintCanvasToImageCallback}
+            title="Capture Paint Canvas"
+            color="#324aa8"
+          />
         </View>
       </View>
     );
   }
-};
+}
 
-const styles = StyleSheet.create({
-  paintContainer: {
-    borderWidth: 0.5,
-    borderColor: '#DDDDDD',
-  },
-
-  paintSurface: {
-    backgroundColor: 'transparent',
-  },
-});
-
-class _PointsToSvgConverter {
+class PointsToSvgConverter {
   private _offsetX: number = 0;
   private _offsetY: number = 0;
 
-  public setOffsets(layout: LayoutRectangle): void {
+  setOffsets(layout: LayoutRectangle): void {
     this._offsetX = layout.x;
     this._offsetY = layout.y;
   }
 
-  public pointsToSvgPath(points: { x: number; y: number }[]): string {
+  pointsToSvgPath(points: { x: number; y: number }[]): string {
     if (points.length > 0) {
-      let path = 
-        `M ${points[0].x - this._offsetX}, ${points[0].y - this._offsetY} S`;
+      let path = `M ${points[0].x - this._offsetX}, ${
+        points[0].y - this._offsetY
+      } L`;
       points.forEach((point: { x: number; y: number }) => {
-        path = 
-          `${path} ${point.x - this._offsetX}, ${point.y - this._offsetY} `;
+        path = `${path} ${point.x - this._offsetX}, ${
+          point.y - this._offsetY
+        } `;
       });
       return path;
     } else {
-      return '';
+      return "";
     }
   }
 
-  public pointToSvgCircle(
-      point: { x: number; y: number }): { x: string; y: string } {
+  pointToSvgCircle(point: { x: number; y: number }): {
+    x: string;
+    y: string;
+  } {
     return { x: `${point.x - this._offsetX}`, y: `${point.y - this._offsetY}` };
   }
 }
+
+const styles = StyleSheet.create({
+  paintCanvasContainer: {
+    borderWidth: 0.5,
+    borderColor: "#dddddd",
+  },
+
+  paintCanvasSurface: {
+    backgroundColor: "transparent",
+  },
+});
 
 export default PaintCanvas;
