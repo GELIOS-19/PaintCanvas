@@ -1,4 +1,4 @@
-import React, { Component, RefObject } from "react";
+import React, { Component, RefObject, ReactNode } from 'react';
 import {
   StyleSheet,
   View,
@@ -7,11 +7,10 @@ import {
   LayoutRectangle,
   LayoutChangeEvent,
   Button,
-  PanResponderInstance,
-} from "react-native";
-import Svg, { G, Path, Circle } from "react-native-svg";
-import ViewShot, { captureRef } from "react-native-view-shot-with-web-support";
-import ColorPicker from "react-native-wheel-color-picker";
+  PanResponderInstance
+} from 'react-native';
+import Svg, { G, Path, Circle } from 'react-native-svg';
+import ViewShot, { captureRef } from 'react-native-view-shot-with-web-support';
 
 interface PaintCanvasProps {
   width: number;
@@ -21,8 +20,8 @@ interface PaintCanvasProps {
 
 interface PaintCanvasState {
   currentPoints: { x: number; y: number }[];
-  currentPath: React.ReactNode;
-  completedPaths: React.ReactNode[];
+  currentPath: ReactNode;
+  completedPaths: ReactNode[];
   strokeColor: string;
   strokeSize: number;
 }
@@ -39,8 +38,8 @@ class PaintCanvas extends Component<PaintCanvasProps, PaintCanvasState> {
       currentPoints: [],
       currentPath: <Path />,
       completedPaths: [],
-      strokeColor: "",
-      strokeSize: 3,
+      strokeColor: 'black',
+      strokeSize: 3
     };
 
     this._panResponder = PanResponder.create({
@@ -74,7 +73,7 @@ class PaintCanvas extends Component<PaintCanvasProps, PaintCanvasState> {
 
         this.setState({
           currentPoints: newPoints,
-          currentPath: newCurrentPath,
+          currentPath: newCurrentPath
         });
       },
       onPanResponderRelease: () => {
@@ -107,9 +106,9 @@ class PaintCanvas extends Component<PaintCanvasProps, PaintCanvasState> {
         this.setState({
           currentPoints: [],
           currentPath: <Path />,
-          completedPaths: newFinalPaths,
+          completedPaths: newFinalPaths
         });
-      },
+      }
     });
 
     this._pointsToSvgConverter = new PointsToSvgConverter();
@@ -119,17 +118,17 @@ class PaintCanvas extends Component<PaintCanvasProps, PaintCanvasState> {
 
   private _convertPaintCanvasToImage() {
     captureRef(this._viewShotRef, {
-      result: "base64",
-      quality: 1.0,
+      result: 'base64',
+      quality: 1.0
     }).then((base64: string) => {
-      this.props.onConvertToImage(base64);
+      this.props.onConvertToImage?.(base64);
     });
   }
 
   private _convertPaintCanvasToImageCallback =
     this._convertPaintCanvasToImage.bind(this);
 
-  render(): React.ReactNode {
+  render(): ReactNode {
     return (
       <View
         onLayout={(e: LayoutChangeEvent) =>
@@ -141,27 +140,13 @@ class PaintCanvas extends Component<PaintCanvasProps, PaintCanvasState> {
         <ViewShot ref={this._viewShotRef}>
           <Svg
             style={styles.paintCanvasSurface}
-            width={this.props.width >= 200 ? this.props.width : 200}
-            height={this.props.height >= 200 ? this.props.height : 200}
+            width={this.props.width}
+            height={this.props.height}
           >
             <G>{this.state.completedPaths}</G>
             <G>{this.state.currentPath}</G>
           </Svg>
         </ViewShot>
-        <View style={styles.paintCanvasContainer}>
-          <ColorPicker
-            onColorChangeComplete={(color: string) => {
-              this.setState({ strokeColor: color });
-            }}
-          />
-        </View>
-        <View style={styles.paintCanvasContainer}>
-          <Button
-            onPress={this._convertPaintCanvasToImageCallback}
-            title="Capture Paint Canvas"
-            color="#324aa8"
-          />
-        </View>
       </View>
     );
   }
@@ -188,7 +173,7 @@ class PointsToSvgConverter {
       });
       return path;
     } else {
-      return "";
+      return '';
     }
   }
 
@@ -202,13 +187,13 @@ class PointsToSvgConverter {
 
 const styles = StyleSheet.create({
   paintCanvasContainer: {
-    borderWidth: 0.5,
-    borderColor: "#dddddd",
+    borderWidth: 1,
+    borderColor: '#dddddd'
   },
 
   paintCanvasSurface: {
-    backgroundColor: "transparent",
-  },
+    backgroundColor: 'transparent'
+  }
 });
 
 export default PaintCanvas;
